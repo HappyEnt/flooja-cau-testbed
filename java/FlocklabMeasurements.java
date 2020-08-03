@@ -25,7 +25,7 @@ public class FlocklabMeasurements implements IFlockLabMeasurementFiles {
     if (!serial.exists() || !serial.isFile())
       serial = null;
 
-    gpioTrace = new File(folder, "gpiotracing.csv");
+    gpioTrace = new File(folder, "gpiotraces.csv");
     if (!gpioTrace.exists() || !gpioTrace.isFile())
       gpioTrace = null;
   }

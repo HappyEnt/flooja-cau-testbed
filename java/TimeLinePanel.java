@@ -209,8 +209,10 @@ public class TimeLinePanel extends JPanel {
   public void paint(Graphics g) {
     super.paint(g);
 
+    Graphics2D g2d = (Graphics2D) g;
+
     if (timeCursor.getStartTime() != null) {
-      g.setColor(Color.BLACK);
+      g2d.setColor(Color.BLACK);
       int timeLinesOffset = 0;
       for (JComponent noteBox : nodeBoxes.values()) {
         if (noteBox.isVisible()) {
@@ -220,7 +222,7 @@ public class TimeLinePanel extends JPanel {
       }
       // drag start
       int startX = timeLinesOffset + (int) ((timeCursor.getStartTime() - currentTime.getValue()) / timePerPixel.getValue());
-      g.drawLine(startX, 0, startX, getHeight());
+      g2d.drawLine(startX, 0, startX, getHeight());
       int endX = startX;
 
       TimeValue t1 = new TimeValue(timeCursor.getStartTime() - TimePlot.startTime);
@@ -234,7 +236,7 @@ public class TimeLinePanel extends JPanel {
       if (timeCursor.getEndTime() != null) {
         // current position
         endX = timeLinesOffset + (int) ((timeCursor.getEndTime() - currentTime.getValue()) / timePerPixel.getValue());
-        g.drawLine(endX, 0, endX, getHeight());
+        g2d.drawLine(endX, 0, endX, getHeight());
 
         TimeValue t2 = new TimeValue(timeCursor.getEndTime() - TimePlot.startTime);
 
@@ -250,19 +252,19 @@ public class TimeLinePanel extends JPanel {
         if (source instanceof CurrentPlot) {
           Double averageCurrent = ((CurrentPlot) source).getTrace().averageIn(timeCursor.getStartTime(), timeCursor.getEndTime());
           if (averageCurrent != null)
-            cursorText += String.format(", avg. current: %sA", FloatUtils.convert(averageCurrent / 1e3, 2));
+            cursorText += String.format(", avg2d. current: %sA", FloatUtils.convert(averageCurrent / 1e3, 2));
         }
       }
 
-      FontMetrics fm = g.getFontMetrics();
+      FontMetrics fm = g2d.getFontMetrics();
       Rectangle visibleRect = getVisibleRect();
       int textY = visibleRect.y + fm.getHeight();
       int textWidth = fm.stringWidth(cursorText);
       int textX = Math.max(Math.min(endX, visibleRect.x + visibleRect.width - textWidth), visibleRect.x);
-      g.setColor(Color.LIGHT_GRAY);
-      g.fillRect(textX, visibleRect.y, textWidth, fm.getHeight() + 4);
-      g.setColor(Color.BLACK);
-      g.drawString(cursorText, textX, textY);
+      g2d.setColor(Color.LIGHT_GRAY);
+      g2d.fillRect(textX, visibleRect.y, textWidth, fm.getHeight() + 4);
+      g2d.setColor(Color.BLACK);
+      g2d.drawString(cursorText, textX, textY);
     }
   }
 }

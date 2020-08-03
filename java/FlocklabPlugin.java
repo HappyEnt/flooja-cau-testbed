@@ -187,8 +187,6 @@ public class FlocklabPlugin extends VisPlugin {
     GpioPlot.eventDestination = timeLinePanel;
 
     // power and gpio GUI
-    currentPlotFac = new CurrentPlotFactory(currentTime);
-
     for (int id : new TreeSet<Integer>(ids)) {
       final Box nodeBox = Box.createVerticalBox();
 
@@ -240,10 +238,8 @@ public class FlocklabPlugin extends VisPlugin {
     final AdjustmentListener adjustmentListener = new AdjustmentListener() {
       @Override
       public void adjustmentValueChanged(AdjustmentEvent adjustmentEvent) {
-        if (!timeScrollBar.getValueIsAdjusting()) {
           long newTime = startTime + (long) (timeScrollBar.getValue() / (double) timeScrollBar.getMaximum() * (endTime - startTime));
           currentTime.setValue(newTime);
-        }
       }
     };
     timeScrollBar.addAdjustmentListener(adjustmentListener);
@@ -379,27 +375,6 @@ public class FlocklabPlugin extends VisPlugin {
     JMenu zoomMenu = new JMenu("Zoom");
     zoomMenu.add(zoomInAction);
     zoomMenu.add(zoomOutAction);
-    zoomMenu.add(new AbstractAction("Set max current") {
-      @Override
-      public void actionPerformed(ActionEvent actionEvent) {
-        Double newMaxCurrent = null;
-        while (true) {
-          String input = JOptionPane.showInputDialog(FlocklabPlugin.this, "Set upper limit of displayed current in mA (> 0)", currentPlotFac.getMaxCurrent().getValue());
-          try {
-            newMaxCurrent = Double.parseDouble(input);
-          } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(FlocklabPlugin.this, "Must enter a decimal value (e.g. 12.34)");
-            continue;
-          }
-          if (newMaxCurrent <= 0) {
-            JOptionPane.showMessageDialog(FlocklabPlugin.this, "Value must be > 0");
-            continue;
-          }
-          break;
-        }
-        currentPlotFac.getMaxCurrent().setValue(newMaxCurrent);
-      }
-    });
     menuBar.add(zoomMenu);
 
     // pin description menu
@@ -642,8 +617,6 @@ public class FlocklabPlugin extends VisPlugin {
 
   private final TimePerPixel timePerPixel;
   private final BoundedTimeValue currentTime;
-
-  private final CurrentPlotFactory currentPlotFac;
 
   private final Map<String, ObservableValue<Boolean>> gpioTraceVisibilities;
   private final Map<String, ObservableValue<String>> pinDescriptions;

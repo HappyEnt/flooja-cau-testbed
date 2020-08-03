@@ -12,6 +12,6 @@ public class FlocklabMeasurementsTest {
     FlocklabMeasurements measurements = new FlocklabMeasurements(folder);
 
     assertEquals(measurements.getSerialOutputFile(), new File(folder, "serial.csv"));
-    assertEquals(measurements.getGpioTraceFile(), new File(folder, "gpiotracing.csv"));
+    assertEquals(measurements.getGpioTraceFile(), new File(folder, "gpiotraces.csv"));
   }
 }

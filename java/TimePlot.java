@@ -7,7 +7,7 @@ import java.util.*;
 /**
  * Created by andreas on 13.10.14.
  */
-public abstract class TimePlot extends JComponent implements MouseInputListener, MouseWheelListener {
+public abstract class TimePlot extends JPanel implements MouseInputListener, MouseWheelListener {
   private static final ComponentListener widthListener = new ComponentListener() {
     @Override
     public void componentResized(ComponentEvent componentEvent) {
@@ -98,6 +98,7 @@ public abstract class TimePlot extends JComponent implements MouseInputListener,
   }
 
   protected final void fillIntervall(Graphics g, long start, long end, Color color, boolean atLeast1Wide) {
+    Graphics2D g2d = (Graphics2D) g;
     long lowerTimeLimit = currentTime;
     long upperTimeLimit = currentTime + (long) (getWidth() * timePerPixel.getValue());
     if (start <= upperTimeLimit && end >= lowerTimeLimit && start <= end) {
@@ -107,8 +108,8 @@ public abstract class TimePlot extends JComponent implements MouseInputListener,
       if (atLeast1Wide)
         length = Math.max(length, 1);
 
-      g.setColor(color);
-      g.fillRect(startX, 0, length, getHeight());
+      g2d.setColor(color);
+      g2d.fillRect(startX, 0, length, getHeight());
     }
   }
 
@@ -116,10 +117,13 @@ public abstract class TimePlot extends JComponent implements MouseInputListener,
 
   @Override
   protected void paintComponent(Graphics g) {
+    this.setOpaque(false);
     super.paintComponent(g);
+    Graphics2D g2d = (Graphics2D) g;
 
-    fillIntervall(g, TimePlot.startTime, TimePlot.endTime, new Color(245, 245, 245), true);
-    paintEvents(g);
+    // fillIntervall(g2d, TimePlot.startTime, TimePlot.endTime, new Color(245, 245, 245), true);
+    paintEvents(g2d);
+    // repaint();
   }
 
   protected abstract void paintEvents(Graphics g);

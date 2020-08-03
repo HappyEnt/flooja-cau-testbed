@@ -1,5 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.geom.Path2D;
 import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.List;
@@ -11,6 +12,12 @@ public class GpioPlot extends TimePlot {
   public static JComponent eventDestination;
   private final String pinName;
   private final ObservableValue<String> pinDescription;
+
+  private final BasicStroke traceStroke =
+      new BasicStroke(2.0f,
+                      BasicStroke.CAP_BUTT,
+                      BasicStroke.JOIN_ROUND
+                      );
 
   public GpioPlot(NavigableMap<Long, Boolean> trace, String pinName, BoundedTimeValue currentTime, ObservableValue<String> pinDescription) {
     super(currentTime);
@@ -28,7 +35,36 @@ public class GpioPlot extends TimePlot {
 
   @Override
   public int getHeight() {
-    return 7;
+    return 40;
+  }
+
+  private void drawTrace(Graphics g, long startTimestamp, long endTimestamp) {
+    Graphics2D g2d = (Graphics2D) g;
+    long lowerTimeLimit = currentTime;
+    long upperTimeLimit = currentTime + (long) (getWidth() * TimePlot.timePerPixel.getValue());
+    if (startTimestamp <= upperTimeLimit && endTimestamp >= lowerTimeLimit && startTimestamp <= endTimestamp) {
+      long startT = Math.max(lowerTimeLimit, startTimestamp);
+      int startX = (int) ((startT - currentTime) / TimePlot.timePerPixel.getValue());
+      int length = (int) ((Math.min(endTimestamp, upperTimeLimit) - startT) / TimePlot.timePerPixel.getValue());
+
+      Path2D path = new Path2D.Double();
+      if (startT == lowerTimeLimit) {
+          path.moveTo(startX,0);
+          path.lineTo(startX+length,0);
+      } else {
+          path.moveTo(startX,getHeight());
+          path.lineTo(startX,0);
+          path.lineTo(startX+length,0);
+      }
+
+      if(endTimestamp < upperTimeLimit) {
+          path.lineTo(startX+length,getHeight());
+      }
+
+      g2d.setColor(new Color(0, 0, 0));
+      g2d.setStroke(traceStroke);
+      g2d.draw(path);
+    }
   }
 
   @Override
@@ -56,10 +92,8 @@ public class GpioPlot extends TimePlot {
     for (Map.Entry<Long, Boolean> e : events.entrySet()) {
       if (!e.getValue()) {
         if (blockStart != -1) {
-          drawBlock(g, blockStart, e.getKey());
+          drawTrace(g, blockStart, e.getKey());
           blockStart = -1;
-        } else {
-          drawArrow(g, e.getKey(), false);
         }
       } else {
         if (blockStart == -1)
@@ -69,25 +103,10 @@ public class GpioPlot extends TimePlot {
       }
     }
     if (blockStart != -1)
-      drawBlock(g, blockStart, TimePlot.endTime);
-    for (long t : additionalUpEvents)
-      drawArrow(g, t, true);
+      drawTrace(g, blockStart, TimePlot.endTime);
   }
 
   private static final double ARROW_FRACTION = 0.5d;
-
-  private void drawArrow(Graphics g, long time, boolean up) {
-    g.setColor(Color.BLACK);
-    int x = (int) ((time - currentTime) / timePerPixel.getValue());
-    g.drawLine(x, 0, x, getHeight());
-    if (up) {
-      g.drawLine(x, 0, x + (int) (getHeight() * ARROW_FRACTION), (int) (getHeight() * ARROW_FRACTION));
-      g.drawLine(x, 0, x - (int) (getHeight() * ARROW_FRACTION), (int) (getHeight() * ARROW_FRACTION));
-    } else {
-      g.drawLine(x, getHeight(), x + (int) (getHeight() * ARROW_FRACTION), (int)(getHeight() * (1 - ARROW_FRACTION)));
-      g.drawLine(x, getHeight(), x - (int) (getHeight() * ARROW_FRACTION), (int) (getHeight() * (1 - ARROW_FRACTION)));
-    }
-  }
 
   private void drawBlock(Graphics g, long blockStart, long blockEnd) {
     fillIntervall(g, blockStart, blockEnd, getGpioPinColor(this.pinName), true);
@@ -181,11 +200,11 @@ public class GpioPlot extends TimePlot {
   private static final Map<String, Color> gpioColors;
   static {
     gpioColors = new HashMap<String, Color>();
-    gpioColors.put("LED1", new Color(242, 99, 99)); // RED
-    gpioColors.put("LED2", new Color(98, 204, 98)); // GREEN
-    gpioColors.put("LED3", new Color(242, 242, 80)); // yellow
-    gpioColors.put("INT1", new Color(102, 102, 237)); // blue
-    gpioColors.put("INT2", new Color(142, 83, 201)); // purple
+    gpioColors.put("1", new Color(242, 99, 99)); // RED
+    gpioColors.put("2", new Color(98, 204, 98)); // GREEN
+    gpioColors.put("3", new Color(242, 242, 80)); // yellow
+    gpioColors.put("4", new Color(102, 102, 237)); // blue
+    gpioColors.put("5", new Color(142, 83, 201)); // purple
   }
 
   private static Color getGpioPinColor(String pinName) {
