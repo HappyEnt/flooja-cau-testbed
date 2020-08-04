@@ -46,8 +46,8 @@ public class GpioPlot extends TimePlot {
   @Override
   protected void paintEvents(Graphics g) {
     final double timePerPixel = TimePlot.timePerPixel.getValue();
-    // final long plotEndTime = currentTime + (long) (getWidth() * timePerPixel);
-    final long plotEndTime = TimePlot.endTime;
+    final long plotEndTime = currentTime + (long) (getWidth() * timePerPixel);
+    // final long plotEndTime = TimePlot.endTime;
 
     fillIntervall(g, currentTime, TimePlot.endTime, Color.WHITE, true);
 
@@ -63,6 +63,7 @@ public class GpioPlot extends TimePlot {
     Graphics2D g2d = (Graphics2D) g;
     Path2D horizontalOffscreenLine = new Path2D.Double();
     int previousSignal = -1;
+    double previousYPos = 0;
     long previousTimestamp = -1;
     double currentXPos = 0;
 
@@ -84,7 +85,6 @@ public class GpioPlot extends TimePlot {
         currentTimestamp = e.getKey();
         currentYPos = currentSignal * getHeight();
 
-
         startT = Math.max(currentTime, previousTimestamp);
         length = (double) ((Math.min(currentTimestamp, plotEndTime) - startT) / TimePlot.timePerPixel.getValue());
 
@@ -94,31 +94,34 @@ public class GpioPlot extends TimePlot {
             previousTimestamp = currentTimestamp;
             previousSignal = currentSignal;
         } else {
-            double previousYPos = previousSignal * getHeight() + 0.5*strokeThickness * (previousSignal == 1 ? -1 : 1);
             horizontalLine.moveTo(currentXPos, previousYPos);
             currentXPos += length;
             horizontalLine.lineTo(currentXPos, previousYPos);
             g2d.setColor(currentSignal == 1 ? highColor : lowColor);
             g2d.draw(horizontalLine);
 
-            verticalLine.moveTo(currentXPos, strokeThickness*1.2); // *1.2 otherwise a pixel bleeds into the horizontal line...
-            verticalLine.lineTo(currentXPos, getHeight() - strokeThickness*1.2);
+            verticalLine.moveTo(currentXPos, strokeThickness*1.5);
+            verticalLine.lineTo(currentXPos, getHeight() - strokeThickness*1.5);
             g2d.setColor(verticalLineColor);
             g2d.draw(verticalLine);
 
             // path.lineTo(currentXPos, currentSignal * getHeight());
             previousSignal = currentSignal;
             previousTimestamp = currentTimestamp;
-
-            // used to draw line from last element to end of timeline
-            horizontalOffscreenLine.moveTo(currentXPos, currentYPos);
         }
+
+        previousYPos = previousSignal * getHeight() + 0.5*strokeThickness * (previousSignal == 1 ? -1 : 1);
+
+        // used to draw line from last element to end of timeline
+        horizontalOffscreenLine.moveTo(currentXPos, previousYPos);
     }
 
 
     // previous loop has executed at least once, => initial point for path is set via moveTo
     if(previousSignal != -1) {
-        horizontalOffscreenLine.lineTo(getWidth(), previousSignal * getHeight());
+        horizontalOffscreenLine.lineTo(getWidth(), previousSignal * getHeight() + 0.5 * strokeThickness * (previousSignal == 1 ? -1 : 1));
+        g2d.setColor(previousSignal == 1 ? lowColor : highColor);
+        g2d.draw(horizontalOffscreenLine);
     }
 
 
