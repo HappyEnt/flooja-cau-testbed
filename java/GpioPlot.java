@@ -13,11 +13,16 @@ public class GpioPlot extends TimePlot {
   private final String pinName;
   private final ObservableValue<String> pinDescription;
 
+  private final float strokeThickness = 2.0f;
   private final BasicStroke traceStroke =
-      new BasicStroke(2.0f,
-                      BasicStroke.CAP_BUTT,
+      new BasicStroke(strokeThickness,
+                      BasicStroke.CAP_SQUARE,
                       BasicStroke.JOIN_ROUND
                       );
+
+  Color lowColor = new Color(115,19,44);
+  Color highColor = new Color(19,115,44);
+  Color verticalLineColor = new Color(200,200,200);
 
   public GpioPlot(NavigableMap<Long, Boolean> trace, String pinName, BoundedTimeValue currentTime, ObservableValue<String> pinDescription) {
     super(currentTime);
@@ -38,46 +43,13 @@ public class GpioPlot extends TimePlot {
     return 40;
   }
 
-  private void drawTrace(Graphics g, long startTimestamp, long endTimestamp) {
-    Graphics2D g2d = (Graphics2D) g;
-    long lowerTimeLimit = currentTime;
-    long upperTimeLimit = currentTime + (long) (getWidth() * TimePlot.timePerPixel.getValue());
-    if (startTimestamp <= upperTimeLimit && endTimestamp >= lowerTimeLimit && startTimestamp <= endTimestamp) {
-      long startT = Math.max(lowerTimeLimit, startTimestamp);
-      int startX = (int) ((startT - currentTime) / TimePlot.timePerPixel.getValue());
-      int length = (int) ((Math.min(endTimestamp, upperTimeLimit) - startT) / TimePlot.timePerPixel.getValue());
-
-      Path2D path = new Path2D.Double();
-      if (startT == lowerTimeLimit) {
-          path.moveTo(startX,0);
-          path.lineTo(startX+length,0);
-      } else {
-          path.moveTo(startX,getHeight());
-          path.lineTo(startX,0);
-          path.lineTo(startX+length,0);
-      }
-
-      if(endTimestamp < upperTimeLimit) {
-          path.lineTo(startX+length,getHeight());
-      }
-
-      g2d.setColor(new Color(0, 0, 0));
-      g2d.setStroke(traceStroke);
-      g2d.draw(path);
-    }
-  }
-
   @Override
   protected void paintEvents(Graphics g) {
     final double timePerPixel = TimePlot.timePerPixel.getValue();
-    final long plotEndTime = currentTime + (long) (getWidth() * timePerPixel);
+    // final long plotEndTime = currentTime + (long) (getWidth() * timePerPixel);
+    final long plotEndTime = TimePlot.endTime;
 
-    Long firstTimeEver = null;
-    try {
-      firstTimeEver = trace.firstKey();
-    } catch (NoSuchElementException ignored) {}
-    if (firstTimeEver != null)
-      fillIntervall(g, firstTimeEver, TimePlot.endTime, Color.WHITE, true);
+    fillIntervall(g, currentTime, TimePlot.endTime, Color.WHITE, true);
 
     Long timeOfLastEventBeforeCurrentTime = trace.floorKey(currentTime);
     NavigableMap<Long, Boolean> events = trace.subMap(
@@ -87,23 +59,69 @@ public class GpioPlot extends TimePlot {
         true,
         plotEndTime, true);
 
-    long blockStart = -1;
-    List<Long> additionalUpEvents = new ArrayList<Long>();
+
+    Graphics2D g2d = (Graphics2D) g;
+    Path2D horizontalOffscreenLine = new Path2D.Double();
+    int previousSignal = -1;
+    long previousTimestamp = -1;
+    double currentXPos = 0;
+
+
+    g2d.setStroke(traceStroke);
+
+    // -- Draw Traces --
     for (Map.Entry<Long, Boolean> e : events.entrySet()) {
-      if (!e.getValue()) {
-        if (blockStart != -1) {
-          drawTrace(g, blockStart, e.getKey());
-          blockStart = -1;
+        double length;
+        long startT;
+        int currentSignal;
+        long currentTimestamp;
+        double currentYPos;
+        Path2D horizontalLine = new Path2D.Double();
+        Path2D verticalLine   = new Path2D.Double();
+
+        // Because inverted coordinate system. replace with screen space transformation.
+        currentSignal = e.getValue() ? 0 : 1;
+        currentTimestamp = e.getKey();
+        currentYPos = currentSignal * getHeight();
+
+
+        startT = Math.max(currentTime, previousTimestamp);
+        length = (double) ((Math.min(currentTimestamp, plotEndTime) - startT) / TimePlot.timePerPixel.getValue());
+
+        // determine initial signal state
+        if (previousSignal == -1 && previousTimestamp == -1) {
+            currentXPos = (int) ((startT - currentTime) / TimePlot.timePerPixel.getValue());
+            previousTimestamp = currentTimestamp;
+            previousSignal = currentSignal;
+        } else {
+            double previousYPos = previousSignal * getHeight() + 0.5*strokeThickness * (previousSignal == 1 ? -1 : 1);
+            horizontalLine.moveTo(currentXPos, previousYPos);
+            currentXPos += length;
+            horizontalLine.lineTo(currentXPos, previousYPos);
+            g2d.setColor(currentSignal == 1 ? highColor : lowColor);
+            g2d.draw(horizontalLine);
+
+            verticalLine.moveTo(currentXPos, strokeThickness*1.2); // *1.2 otherwise a pixel bleeds into the horizontal line...
+            verticalLine.lineTo(currentXPos, getHeight() - strokeThickness*1.2);
+            g2d.setColor(verticalLineColor);
+            g2d.draw(verticalLine);
+
+            // path.lineTo(currentXPos, currentSignal * getHeight());
+            previousSignal = currentSignal;
+            previousTimestamp = currentTimestamp;
+
+            // used to draw line from last element to end of timeline
+            horizontalOffscreenLine.moveTo(currentXPos, currentYPos);
         }
-      } else {
-        if (blockStart == -1)
-          blockStart = e.getKey();
-        else
-          additionalUpEvents.add(e.getKey());
-      }
     }
-    if (blockStart != -1)
-      drawTrace(g, blockStart, TimePlot.endTime);
+
+
+    // previous loop has executed at least once, => initial point for path is set via moveTo
+    if(previousSignal != -1) {
+        horizontalOffscreenLine.lineTo(getWidth(), previousSignal * getHeight());
+    }
+
+
   }
 
   private static final double ARROW_FRACTION = 0.5d;
