@@ -1,6 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.Path2D;
+import java.awt.geom.Rectangle2D ;
 import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.List;
@@ -23,6 +24,7 @@ public class GpioPlot extends TimePlot {
   Color lowColor = new Color(115,19,44);
   Color highColor = new Color(19,115,44);
   Color verticalLineColor = new Color(200,200,200);
+  Color interiorColor = new Color(235,235,235);
 
   public GpioPlot(NavigableMap<Long, Boolean> trace, String pinName, BoundedTimeValue currentTime, ObservableValue<String> pinDescription) {
     super(currentTime);
@@ -66,7 +68,7 @@ public class GpioPlot extends TimePlot {
     double previousYPos = 0;
     long previousTimestamp = -1;
     double currentXPos = 0;
-
+    double deltaT = 0;
 
     g2d.setStroke(traceStroke);
 
@@ -79,6 +81,7 @@ public class GpioPlot extends TimePlot {
         double currentYPos;
         Path2D horizontalLine = new Path2D.Double();
         Path2D verticalLine   = new Path2D.Double();
+
 
         // Because inverted coordinate system. replace with screen space transformation.
         currentSignal = e.getValue() ? 0 : 1;
@@ -94,16 +97,30 @@ public class GpioPlot extends TimePlot {
             previousTimestamp = currentTimestamp;
             previousSignal = currentSignal;
         } else {
-            horizontalLine.moveTo(currentXPos, previousYPos);
-            currentXPos += length;
-            horizontalLine.lineTo(currentXPos, previousYPos);
-            g2d.setColor(currentSignal == 1 ? highColor : lowColor);
-            g2d.draw(horizontalLine);
 
-            verticalLine.moveTo(currentXPos, strokeThickness*1.5);
-            verticalLine.lineTo(currentXPos, getHeight() - strokeThickness*1.5);
-            g2d.setColor(verticalLineColor);
-            g2d.draw(verticalLine);
+            deltaT = currentTimestamp - previousTimestamp;
+
+            // if (deltaT / timePerPixel > 2)
+            // {
+
+                if (previousSignal < 1) {
+                    Rectangle2D interior = new Rectangle2D.Double(currentXPos, strokeThickness, length, getHeight() - strokeThickness);
+                    g2d.setColor(interiorColor);
+                    g2d.fill(interior);
+                }
+
+                horizontalLine.moveTo(currentXPos, previousYPos); // e.g. previousXPos to currentXPos
+                currentXPos += length;
+                horizontalLine.lineTo(currentXPos, previousYPos);
+
+                g2d.setColor(currentSignal == 1 ? highColor : lowColor);
+                g2d.draw(horizontalLine);
+
+                verticalLine.moveTo(currentXPos, strokeThickness*1.5);
+                verticalLine.lineTo(currentXPos, getHeight() - strokeThickness*1.5);
+                g2d.setColor(verticalLineColor);
+                g2d.draw(verticalLine);
+            // }
 
             // path.lineTo(currentXPos, currentSignal * getHeight());
             previousSignal = currentSignal;
@@ -112,16 +129,24 @@ public class GpioPlot extends TimePlot {
 
         previousYPos = previousSignal * getHeight() + 0.5*strokeThickness * (previousSignal == 1 ? -1 : 1);
 
-        // used to draw line from last element to end of timeline
-        horizontalOffscreenLine.moveTo(currentXPos, previousYPos);
     }
 
 
     // previous loop has executed at least once, => initial point for path is set via moveTo
     if(previousSignal != -1) {
+        // used to draw line from last element to end of timeline
+        horizontalOffscreenLine.moveTo(currentXPos, previousYPos);
         horizontalOffscreenLine.lineTo(getWidth(), previousSignal * getHeight() + 0.5 * strokeThickness * (previousSignal == 1 ? -1 : 1));
+
         g2d.setColor(previousSignal == 1 ? lowColor : highColor);
         g2d.draw(horizontalOffscreenLine);
+
+        if (previousSignal < 1) {
+            Rectangle2D interior = new Rectangle2D.Double(currentXPos, strokeThickness, getWidth() - currentXPos, getHeight() - strokeThickness);
+            g2d.setColor(interiorColor);
+            g2d.fill(interior);
+        }
+
     }
 
 
